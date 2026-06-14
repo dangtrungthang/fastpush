@@ -1,0 +1,11 @@
+{
+  "name": "react-native-fastpush",
+  "version": "1.0.0",
+  "description": "FastPush OTA update SDK for React Native Android",
+  "main": "src/index.js",
+  "keywords": ["react-native", "android", "ota", "codepush", "fastpush"],
+  "license": "MIT",
+  "peerDependencies": {
+    "react-native": ">=0.71.0"
+  }
+}
