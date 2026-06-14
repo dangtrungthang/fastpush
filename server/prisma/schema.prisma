@@ -30,18 +30,37 @@ model App {
 }
 
 model Release {
-  id            String   @id @default(uuid())
-  appId         String
-  app           App      @relation(fields: [appId], references: [id])
-  version       Int      @default(autoincrement())
-  targetVersion String
-  type          String
-  filePath      String
-  fileSize      Int
-  hash          String
-  description   String?
-  isMandatory   Boolean  @default(false)
-  isDisabled    Boolean  @default(false)
-  downloadCount Int      @default(0)
-  createdAt     DateTime @default(now())
+  id              String         @id @default(uuid())
+  appId           String
+  app             App            @relation(fields: [appId], references: [id])
+  version         Int
+  targetVersion   String
+  type            String
+  filePath        String
+  fileSize        Int
+  hash            String
+  description     String?
+  isMandatory     Boolean        @default(false)
+  isDisabled      Boolean        @default(false)
+  rolloutPercent  Int            @default(100)
+  downloadCount   Int            @default(0)
+  installCount    Int            @default(0)
+  failCount       Int            @default(0)
+  rolledBackAt    DateTime?
+  rolledBackFrom  String?
+  createdAt       DateTime       @default(now())
+  deviceInstalls  DeviceInstall[]
+}
+
+model DeviceInstall {
+  id         String   @id @default(uuid())
+  releaseId  String
+  release    Release  @relation(fields: [releaseId], references: [id])
+  deviceId   String
+  appVersion String
+  status     String   @default("pending")  // pending | downloading | installed | failed
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
+
+  @@unique([releaseId, deviceId])
 }

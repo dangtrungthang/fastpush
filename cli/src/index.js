@@ -5,6 +5,7 @@ const { login, register, setServer } = require('./commands/login');
 const { createApp, listApps, appInfo } = require('./commands/app');
 const { release } = require('./commands/release');
 const { history } = require('./commands/history');
+const { rollback, promote, metrics } = require('./commands/rollback');
 
 const program = new Command();
 
@@ -69,5 +70,25 @@ program
   .description('View release history')
   .requiredOption('--app <name>', 'App name')
   .action(history);
+
+program
+  .command('rollback')
+  .description('Rollback to the previous active release')
+  .requiredOption('--app <name>', 'App name')
+  .action(rollback);
+
+program
+  .command('promote')
+  .description('Update rollout percentage of a release')
+  .requiredOption('--app <name>', 'App name')
+  .requiredOption('--version <number>', 'Release version number')
+  .option('--rollout <percent>', 'Rollout percentage (0-100)', '100')
+  .action(promote);
+
+program
+  .command('metrics')
+  .description('View download/install metrics')
+  .requiredOption('--app <name>', 'App name')
+  .action(metrics);
 
 program.parse();
