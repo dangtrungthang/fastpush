@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  apps      App[]
+  createdAt DateTime @default(now())
+}
+
+model App {
+  id            String    @id @default(uuid())
+  name          String
+  platform      String
+  deploymentKey String    @unique @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  releases      Release[]
+  createdAt     DateTime  @default(now())
+
+  @@unique([name, userId])
+}
+
+model Release {
+  id            String   @id @default(uuid())
+  appId         String
+  app           App      @relation(fields: [appId], references: [id])
+  version       Int      @default(autoincrement())
+  targetVersion String
+  type          String
+  filePath      String
+  fileSize      Int
+  hash          String
+  description   String?
+  isMandatory   Boolean  @default(false)
+  isDisabled    Boolean  @default(false)
+  downloadCount Int      @default(0)
+  createdAt     DateTime @default(now())
+}
