@@ -1,15 +1,22 @@
-import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
+import { NativeModules, NativeEventEmitter, Platform, TurboModuleRegistry } from 'react-native';
 
-const { FastPush: NativeFastPush } = NativeModules;
+// Prefer TurboModuleRegistry (New Architecture) with fallback to legacy NativeModules bridge
+const NativeFastPush =
+  (TurboModuleRegistry && TurboModuleRegistry.get('FastPush')) ||
+  NativeModules.FastPush ||
+  null;
 
-if (!NativeFastPush) {
-  throw new Error(
-    'react-native-fastpush: Native module not found. ' +
-    'Run "npx react-native run-android" and ensure the package is linked.'
-  );
+function assertNativeModule() {
+  if (!NativeFastPush) {
+    throw new Error(
+      'react-native-fastpush: Native module not found. ' +
+      'Run "npx react-native run-android" and ensure the package is linked. ' +
+      'On React Native 0.76+ with New Architecture, enable the Bridge Interop Layer.'
+    );
+  }
 }
 
-const emitter = new NativeEventEmitter(NativeFastPush);
+const emitter = NativeFastPush ? new NativeEventEmitter(NativeFastPush) : null;
 
 let _config = null;
 
@@ -36,7 +43,8 @@ const FastPush = {
    */
   async checkForUpdate() {
     assertConfigured();
-    const appVersion = _config.appVersion || require('react-native/Libraries/Utilities/Platform').Version?.toString() || '1.0.0';
+    assertNativeModule();
+    const appVersion = _config.appVersion || Platform.Version?.toString() || '1.0.0';
     const deviceId = _config.deviceId || getOrCreateDeviceId();
     const update = await NativeFastPush.checkForUpdate(appVersion, deviceId);
     return update;
@@ -52,10 +60,11 @@ const FastPush = {
    */
   async downloadAndApply(update, onProgress) {
     assertConfigured();
+    assertNativeModule();
     const deviceId = _config.deviceId || getOrCreateDeviceId();
 
     let progressListener;
-    if (onProgress) {
+    if (onProgress && emitter) {
       progressListener = emitter.addListener('FastPushDownloadProgress', onProgress);
     }
 
@@ -79,6 +88,7 @@ const FastPush = {
    */
   async sync(options = {}) {
     assertConfigured();
+    assertNativeModule();
     const { onProgress, onUpdateAvailable, reloadOnSuccess = true } = options;
 
     const update = await FastPush.checkForUpdate();
@@ -100,6 +110,7 @@ const FastPush = {
    * Called automatically by downloadAndApply — only needed for custom flows.
    */
   async reportStatus(releaseId, status, appVersion = '1.0.0') {
+    assertNativeModule();
     const deviceId = _config?.deviceId || getOrCreateDeviceId();
     return NativeFastPush.reportStatus(releaseId, deviceId, status, appVersion);
   },
@@ -108,6 +119,7 @@ const FastPush = {
    * Get the current downloaded bundle path, or null if using bundled JS.
    */
   async getCurrentBundlePath() {
+    assertNativeModule();
     return NativeFastPush.getCurrentBundlePath();
   },
 
@@ -115,6 +127,7 @@ const FastPush = {
    * Clear the downloaded update and revert to the bundled JS on next launch.
    */
   async clearUpdate() {
+    assertNativeModule();
     return NativeFastPush.clearUpdate();
   },
 
@@ -122,6 +135,7 @@ const FastPush = {
    * Reload the app to apply a downloaded bundle.
    */
   async reloadApp() {
+    assertNativeModule();
     return NativeFastPush.reloadApp();
   },
 
@@ -130,6 +144,7 @@ const FastPush = {
    * Returns an unsubscribe function.
    */
   onDownloadProgress(callback) {
+    assertNativeModule();
     const sub = emitter.addListener('FastPushDownloadProgress', callback);
     return () => sub.remove();
   },
