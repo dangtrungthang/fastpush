@@ -1,6 +1,6 @@
 # react-native-fastpush
 
-SDK React Native (Android) cho [FastPush](https://github.com/dangtrungthang/fastpush) — hệ thống OTA update tự host (tương tự CodePush). Hỗ trợ:
+SDK React Native (Android) cho FastPush — hệ thống OTA update tự host (tương tự CodePush). Hỗ trợ:
 
 - Cập nhật JS bundle qua mạng (OTA), không cần submit lại Store.
 - Cập nhật APK toàn phần (native update) qua installer hệ thống.
@@ -199,7 +199,7 @@ if (update?.type === 'apk') {
 
 ### Deploy bản update từ CLI
 
-Dùng kèm [`fastpush-cli`](../cli/README.md):
+Dùng kèm `fastpush-cli`:
 
 ```bash
 fastpush release --app MyApp --target-version "1.0.x" --description "Fix login bug" --mandatory
@@ -239,11 +239,15 @@ Bản SDK hiện dùng artifact `com.facebook.react:react-android:+` (đổi tê
 **Lỗi version Kotlin/AGP không khớp khi build**
 Từ bản hiện tại, module không tự khai báo `buildscript` riêng — nó dùng chung classpath Kotlin/AGP của app gốc. Đảm bảo `android/build.gradle` ở app có khai báo Kotlin plugin version tương thích (`kotlin-android` cùng version với toàn project).
 
+**`Inconsistent JVM Target Compatibility Between Java and Kotlin Tasks` khi build (`compileDebugJavaWithJavac` vs `compileDebugKotlin` lệch version)**
+Từ bản >= 1.0.4, SDK build bằng JVM target 17 (khớp baseline RN >= 0.73 / AGP 8). Nếu vẫn gặp lỗi này:
+- Kiểm tra bạn đang dùng `react-native-fastpush >= 1.0.4` (`npm ls react-native-fastpush`); bản `< 1.0.4` hard-code JVM target 11, dễ lệch với app chạy Java 17.
+- Nếu project của bạn ép toàn bộ module build bằng Java target khác 17 (ví dụ 21), cần đồng bộ: hoặc hạ project về 17, hoặc thêm `tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach { kotlinOptions.jvmTarget = "21" }` trong `android/build.gradle` của app để ép toàn bộ module (bao gồm thư viện này) build cùng JVM target.
+
 **`minSdkVersion`/`compileSdkVersion` conflict**
 Module yêu cầu `minSdkVersion 21`, `compileSdkVersion 35`, `targetSdkVersion 34`. Đảm bảo app gốc có `compileSdkVersion >= 35` (hoặc set `android.compileSdkVersion` qua `ext` để đồng bộ toàn project) để tránh lỗi merge manifest.
 
 ## Liên quan
 
-- Hướng dẫn tích hợp chi tiết hơn (từng bước copy-paste): [`INTEGRATION.md`](https://github.com/dangtrungthang/fastpush/blob/main/sdk-android/INTEGRATION.md)
-- CLI để deploy release: [`fastpush-cli`](https://github.com/dangtrungthang/fastpush/tree/main/cli)
-- Repo: https://github.com/dangtrungthang/fastpush
+- Hướng dẫn tích hợp chi tiết hơn (từng bước copy-paste): [`INTEGRATION.md`](./INTEGRATION.md)
+- CLI để deploy release: `fastpush-cli`

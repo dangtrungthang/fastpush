@@ -1,6 +1,6 @@
 {
   "name": "react-native-fastpush",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "description": "FastPush OTA update SDK for React Native Android",
   "main": "src/index.js",
   "files": [
@@ -13,15 +13,6 @@
   ],
   "keywords": ["react-native", "android", "ota", "codepush", "fastpush"],
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/dangtrungthang/fastpush.git",
-    "directory": "sdk-android"
-  },
-  "homepage": "https://github.com/dangtrungthang/fastpush/tree/main/sdk-android#readme",
-  "bugs": {
-    "url": "https://github.com/dangtrungthang/fastpush/issues"
-  },
   "peerDependencies": {
     "react-native": ">=0.71.0"
   },
