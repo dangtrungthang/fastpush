@@ -247,6 +247,33 @@ Từ bản >= 1.0.4, SDK build bằng JVM target 17 (khớp baseline RN >= 0.73 
 **`minSdkVersion`/`compileSdkVersion` conflict**
 Module yêu cầu `minSdkVersion 21`, `compileSdkVersion 35`, `targetSdkVersion 34`. Đảm bảo app gốc có `compileSdkVersion >= 35` (hoặc set `android.compileSdkVersion` qua `ext` để đồng bộ toàn project) để tránh lỗi merge manifest.
 
+**`Unresolved reference 'FastPushPackage'` / `'FastPushConfig'` / `'UpdateManager'` trong `MainActivity.kt` / `MainApplication.kt`**
+Lỗi này khác lỗi JVM target — nó nghĩa là module Android của package **chưa được autolink vào `:app`**, nên class `com.fastpush.*` không có trong classpath khi compile, dù code tích hợp đúng theo hướng dẫn. Debug theo thứ tự:
+
+1. Full clean rồi build lại — nguyên nhân phổ biến nhất là cache Gradle cũ sau khi đổi version package:
+   ```bash
+   rm -rf node_modules android/app/build android/build android/.gradle
+   npm install
+   cd android && ./gradlew clean && cd ..
+   npx react-native run-android
+   ```
+2. Kiểm tra package thật sự cài đúng và có đủ thư mục `android/`:
+   ```bash
+   npm ls react-native-fastpush
+   ls node_modules/react-native-fastpush/android   # phải thấy build.gradle, src/
+   ```
+3. Kiểm tra autolinking có nhận diện module:
+   ```bash
+   npx react-native config   # tìm "react-native-fastpush", kiểm tra android.sourceDir trỏ đúng
+   # RN >= 0.71 (Gradle plugin autolinking), sau lần build đầu:
+   cat android/app/build/generated/autolinking/autolinking.json
+   ```
+4. Kiểm tra `android/settings.gradle` của app có khai báo autolinking chuẩn theo RN version:
+   - RN < 0.71: `apply from: file("../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesSettingsGradle(settings)`
+   - RN >= 0.71: `android/app/build.gradle` có `apply plugin: "com.facebook.react"` (RN 0.74+ thường còn có `react { autolinkLibrariesWithApp() }`).
+5. Package yêu cầu `react-native >= 0.71` (`peerDependencies`). Nếu project dùng RN cũ hơn, autolinking kiểu mới không tương thích — cần nâng RN hoặc link thủ công: thêm `include ':react-native-fastpush'` + `project(':react-native-fastpush').projectDir = file('../node_modules/react-native-fastpush/android')` vào `settings.gradle`, và `implementation project(':react-native-fastpush')` vào `app/build.gradle`.
+6. Nếu vẫn lỗi, dừng Gradle daemon trước khi build lại: `./gradlew --stop` — daemon đôi khi giữ cache metadata cũ, đặc biệt sau khi nâng version package.
+
 ## Liên quan
 
 - Hướng dẫn tích hợp chi tiết hơn (từng bước copy-paste): [`INTEGRATION.md`](./INTEGRATION.md)
