@@ -1,6 +1,6 @@
 # fastpush-cli
 
-CLI để build và đẩy bản cập nhật OTA (over-the-air) cho ứng dụng React Native lên server [FastPush](https://github.com/) — tương tự CodePush nhưng tự host. Hỗ trợ đẩy JS bundle, đẩy APK, rollout theo %, rollback và xem metrics.
+CLI để build và đẩy bản cập nhật OTA (over-the-air) cho ứng dụng React Native lên server [FastPush](https://github.com/dangtrungthang/fastpush) — tương tự CodePush nhưng tự host. Hỗ trợ đẩy JS bundle, đẩy APK, rollout theo %, rollback và xem metrics.
 
 ## Cài đặt
 
@@ -143,4 +143,5 @@ Kiểm tra server có giới hạn dung lượng upload (body size limit) phù h
 
 ## Liên quan
 
-- SDK client cho React Native Android: [`react-native-fastpush`](../sdk-android/README.md)
+- SDK client cho React Native Android: [`react-native-fastpush`](https://github.com/dangtrungthang/fastpush/tree/main/sdk-android)
+- Repo: https://github.com/dangtrungthang/fastpush

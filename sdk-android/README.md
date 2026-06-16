@@ -1,6 +1,6 @@
 # react-native-fastpush
 
-SDK React Native (Android) cho [FastPush](../README.md) — hệ thống OTA update tự host (tương tự CodePush). Hỗ trợ:
+SDK React Native (Android) cho [FastPush](https://github.com/dangtrungthang/fastpush) — hệ thống OTA update tự host (tương tự CodePush). Hỗ trợ:
 
 - Cập nhật JS bundle qua mạng (OTA), không cần submit lại Store.
 - Cập nhật APK toàn phần (native update) qua installer hệ thống.
@@ -244,5 +244,6 @@ Module yêu cầu `minSdkVersion 21`, `compileSdkVersion 35`, `targetSdkVersion 
 
 ## Liên quan
 
-- Hướng dẫn tích hợp chi tiết hơn (từng bước copy-paste): [`INTEGRATION.md`](./INTEGRATION.md)
-- CLI để deploy release: [`fastpush-cli`](../cli/README.md)
+- Hướng dẫn tích hợp chi tiết hơn (từng bước copy-paste): [`INTEGRATION.md`](https://github.com/dangtrungthang/fastpush/blob/main/sdk-android/INTEGRATION.md)
+- CLI để deploy release: [`fastpush-cli`](https://github.com/dangtrungthang/fastpush/tree/main/cli)
+- Repo: https://github.com/dangtrungthang/fastpush
