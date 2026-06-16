@@ -43,20 +43,32 @@ fastpush login --email you@example.com --password ******
 
 Có thể bỏ `--email`/`--password` để CLI hỏi qua prompt (ẩn password khi nhập).
 
-### 2. Quản lý app
+### 2. Quản lý app & lấy deployment key (Production / Staging)
 
 ```bash
-# Tạo app mới (platform: android | ios, mặc định android)
+# Tạo app mới — server tự tạo sẵn 2 deployment: Production và Staging
 fastpush app create MyApp --platform android
 
-# Liệt kê app & deployment key
+# Liệt kê app, kèm key của từng deployment (Production/Staging)
 fastpush app list
 
-# Xem chi tiết 1 app theo ID
+# Xem chi tiết 1 app theo ID — cách lấy lại key nếu bỏ lỡ output của `app create`
 fastpush app info <appId>
 ```
 
-`deploymentKey` trả về khi tạo app chính là key cần khai báo trong SDK Android (`FastPushConfig.deploymentKey`).
+Cả 3 lệnh trên đều in ra key theo từng deployment, dạng:
+
+```
+Deployments:
+  Production
+    Key:      <production-deployment-key>
+    Releases: 3
+  Staging
+    Key:      <staging-deployment-key>
+    Releases: 1
+```
+
+Dùng key tương ứng (Production hoặc Staging) khai báo trong SDK Android (`FastPushConfig.deploymentKey`) tùy theo môi trường app build ra.
 
 ### 3. Đẩy bản cập nhật (release)
 

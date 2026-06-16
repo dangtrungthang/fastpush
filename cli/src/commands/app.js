@@ -5,8 +5,10 @@ async function createApp(name, options) {
   try {
     const app = await request('POST', '/apps', { name, platform });
     console.log(`✓ App "${app.name}" created (${app.platform})`);
-    console.log(`  Deployment Key: ${app.deploymentKey}`);
     console.log(`  App ID: ${app.id}`);
+    for (const dep of app.deployments || []) {
+      console.log(`  ${dep.name} key: ${dep.deploymentKey}`);
+    }
   } catch (err) {
     console.error(`✗ Failed: ${err.message}`);
     process.exit(1);
@@ -22,10 +24,12 @@ async function listApps() {
     }
     console.log(`\nYour apps (${apps.length}):\n`);
     for (const app of apps) {
-      const count = app._count?.releases || 0;
+      const count = app.deployments?.reduce((sum, d) => sum + (d._count?.releases || 0), 0) || 0;
       console.log(`  ${app.name} (${app.platform}) — ${count} releases`);
-      console.log(`    Key: ${app.deploymentKey}`);
-      console.log(`    ID:  ${app.id}\n`);
+      for (const dep of app.deployments || []) {
+        console.log(`    ${dep.name} key: ${dep.deploymentKey}`);
+      }
+      console.log(`    ID: ${app.id}\n`);
     }
   } catch (err) {
     console.error(`✗ Failed: ${err.message}`);
@@ -36,11 +40,16 @@ async function listApps() {
 async function appInfo(appId) {
   try {
     const app = await request('GET', `/apps/${appId}`);
-    console.log(`\n  Name:           ${app.name}`);
-    console.log(`  Platform:       ${app.platform}`);
-    console.log(`  Deployment Key: ${app.deploymentKey}`);
-    console.log(`  Releases:       ${app._count?.releases || 0}`);
-    console.log(`  Created:        ${app.createdAt}\n`);
+    console.log(`\n  Name:     ${app.name}`);
+    console.log(`  Platform: ${app.platform}`);
+    console.log(`  Created:  ${app.createdAt}`);
+    console.log(`  Deployments:`);
+    for (const dep of app.deployments || []) {
+      console.log(`    ${dep.name}`);
+      console.log(`      Key:      ${dep.deploymentKey}`);
+      console.log(`      Releases: ${dep._count?.releases || 0}`);
+    }
+    console.log('');
   } catch (err) {
     console.error(`✗ Failed: ${err.message}`);
     process.exit(1);

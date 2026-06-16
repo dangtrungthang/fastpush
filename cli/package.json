@@ -1,6 +1,6 @@
 {
   "name": "fastpush-cli",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "main": "src/index.js",
   "bin": {
     "fastpush": "./src/index.js"
