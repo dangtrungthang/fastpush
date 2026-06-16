@@ -63,12 +63,14 @@ program
   .option('--mandatory', 'Mark as mandatory update', false)
   .option('--type <type>', 'Release type: bundle or apk', 'bundle')
   .option('--file <path>', 'Upload pre-built file instead of building')
+  .option('--target-devices <ids>', 'Comma-separated device IDs to target instead of all devices')
   .action(release);
 
 program
   .command('history')
-  .description('View release history')
+  .description('View release history grouped by deployment')
   .requiredOption('--app <name>', 'App name')
+  .option('--deployment <name>', 'Filter by deployment (e.g., Production, Staging)')
   .action(history);
 
 program

@@ -1,12 +1,14 @@
 package com.fastpush
 
 import android.content.Context
+import android.provider.Settings
 import android.util.Log
 import org.json.JSONObject
 import java.io.*
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
+import java.util.UUID
 
 data class UpdateInfo(
     val id: String,
@@ -31,7 +33,11 @@ class UpdateManager(
         private const val KEY_BUNDLE_PATH = "bundle_path"
         private const val KEY_CRASH_COUNT = "crash_count"
         private const val KEY_LAST_BUNDLE_HASH = "last_bundle_hash"
+        private const val KEY_DEVICE_ID = "device_id"
         private const val MAX_CRASHES = 3
+
+        // Known bug value returned by some emulators/devices instead of a real ANDROID_ID
+        private const val INVALID_ANDROID_ID = "9774d56d682e549c"
     }
 
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -39,6 +45,32 @@ class UpdateManager(
 
     init {
         bundleDir.mkdirs()
+    }
+
+    // Stable per-app-install device identifier, used as the device "SN" reported to the server.
+    // Real hardware serial numbers require READ_PHONE_STATE on API 26+ and are unreliable across
+    // OEMs, so ANDROID_ID is used instead (with a persisted random fallback for the rare case
+    // where it's missing or returns the known emulator bug value).
+    fun getDeviceId(): String {
+        val androidId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+        if (!androidId.isNullOrBlank() && androidId != INVALID_ANDROID_ID) {
+            return androidId
+        }
+        var fallback = prefs.getString(KEY_DEVICE_ID, null)
+        if (fallback == null) {
+            fallback = "device-" + UUID.randomUUID().toString()
+            prefs.edit().putString(KEY_DEVICE_ID, fallback).apply()
+        }
+        return fallback
+    }
+
+    fun getNativeAppVersion(): String {
+        return try {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "unknown"
+        } catch (e: Exception) {
+            Log.w(TAG, "getNativeAppVersion failed: ${e.message}")
+            "unknown"
+        }
     }
 
     fun getCurrentBundlePath(): String? {
@@ -194,16 +226,32 @@ class UpdateManager(
     // Apply a downloaded JS bundle (extract zip → find .bundle file)
     fun applyBundle(zipFile: File, hash: String): Boolean {
         return try {
+            Log.i(TAG, "applyBundle: zipFile=${zipFile.absolutePath} size=${zipFile.length()}")
+
             val extractDir = File(bundleDir, "active")
             extractDir.deleteRecursively()
             extractDir.mkdirs()
 
+            // List zip contents for debugging
+            try {
+                java.util.zip.ZipFile(zipFile).use { z ->
+                    val entries = z.entries().toList()
+                    Log.i(TAG, "Zip entries (${entries.size}): ${entries.take(10).map { it.name }}")
+                }
+            } catch (ze: Exception) {
+                Log.e(TAG, "Zip is invalid or corrupt: ${ze.message}")
+                return false
+            }
+
             unzip(zipFile, extractDir)
+
+            val allFiles = extractDir.walkTopDown().filter { it.isFile }.map { it.name }.toList()
+            Log.i(TAG, "Extracted files: $allFiles")
 
             val bundleFile = extractDir.walkTopDown().find {
                 it.isFile && (it.name.endsWith(".bundle") || it.name.endsWith(".jsbundle"))
             } ?: run {
-                Log.e(TAG, "No .bundle file found in zip")
+                Log.e(TAG, "No .bundle file found. Extracted: $allFiles")
                 return false
             }
 
@@ -216,7 +264,7 @@ class UpdateManager(
             Log.i(TAG, "Bundle applied: ${bundleFile.absolutePath}")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "applyBundle failed: ${e.message}")
+            Log.e(TAG, "applyBundle failed: ${e.javaClass.simpleName}: ${e.message}")
             false
         }
     }

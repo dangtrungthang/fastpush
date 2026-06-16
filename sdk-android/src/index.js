@@ -19,6 +19,8 @@ function assertNativeModule() {
 const emitter = NativeFastPush ? new NativeEventEmitter(NativeFastPush) : null;
 
 let _config = null;
+let _cachedDeviceId = null;
+let _cachedNativeAppVersion = null;
 
 const FastPush = {
   /**
@@ -28,8 +30,8 @@ const FastPush = {
    * @param {Object} options
    * @param {string} options.serverUrl       - FastPush server URL (e.g., "https://fastpush.example.com")
    * @param {string} options.deploymentKey   - App deployment key from dashboard
-   * @param {string} [options.appVersion]    - Native app version (default: auto-detected)
-   * @param {string} [options.deviceId]      - Unique device ID (default: random UUID per install)
+   * @param {string} [options.appVersion]    - Native app version (default: auto-detected from the installed package)
+   * @param {string} [options.deviceId]      - Unique device ID (default: stable ANDROID_ID-based device identifier)
    */
   configure(options) {
     if (!options.serverUrl) throw new Error('serverUrl is required');
@@ -40,13 +42,17 @@ const FastPush = {
   /**
    * Check if a new update is available.
    * Returns update info object or null.
+   *
+   * @param {string} [deviceId] - Override the device ID for this check.
+   *                              If omitted, falls back to configure({ deviceId })
+   *                              or the auto-detected device identifier.
    */
-  async checkForUpdate() {
+  async checkForUpdate(deviceId) {
     assertConfigured();
     assertNativeModule();
-    const appVersion = _config.appVersion || Platform.Version?.toString() || '1.0.0';
-    const deviceId = _config.deviceId || getOrCreateDeviceId();
-    const update = await NativeFastPush.checkForUpdate(appVersion, deviceId);
+    const appVersion = _config.appVersion || (await getNativeAppVersion());
+    const resolvedDeviceId = deviceId || _config.deviceId || (await getOrCreateDeviceId());
+    const update = await NativeFastPush.checkForUpdate(appVersion, resolvedDeviceId);
     return update;
   },
 
@@ -57,11 +63,12 @@ const FastPush = {
    *
    * @param {Object} update - The update object from checkForUpdate()
    * @param {Function} [onProgress] - Progress callback (0-100)
+   * @param {string} [deviceId] - Override the device ID for this download.
    */
-  async downloadAndApply(update, onProgress) {
+  async downloadAndApply(update, onProgress, deviceId) {
     assertConfigured();
     assertNativeModule();
-    const deviceId = _config.deviceId || getOrCreateDeviceId();
+    const resolvedDeviceId = deviceId || _config.deviceId || (await getOrCreateDeviceId());
 
     let progressListener;
     if (onProgress && emitter) {
@@ -69,7 +76,7 @@ const FastPush = {
     }
 
     try {
-      const updateWithDevice = { ...update, deviceId };
+      const updateWithDevice = { ...update, deviceId: resolvedDeviceId };
       const result = await NativeFastPush.downloadAndApply(JSON.stringify(updateWithDevice));
       return result;
     } finally {
@@ -85,18 +92,19 @@ const FastPush = {
    * @param {Function} [options.onProgress]          - Download progress callback
    * @param {Function} [options.onUpdateAvailable]   - Called with update info before download
    * @param {boolean}  [options.reloadOnSuccess]     - Reload app after bundle applied (default: true)
+   * @param {string}   [options.deviceId]            - Override the device ID for this sync
    */
   async sync(options = {}) {
     assertConfigured();
     assertNativeModule();
-    const { onProgress, onUpdateAvailable, reloadOnSuccess = true } = options;
+    const { onProgress, onUpdateAvailable, reloadOnSuccess = true, deviceId } = options;
 
-    const update = await FastPush.checkForUpdate();
+    const update = await FastPush.checkForUpdate(deviceId);
     if (!update) return { status: 'up_to_date' };
 
     if (onUpdateAvailable) onUpdateAvailable(update);
 
-    const result = await FastPush.downloadAndApply(update, onProgress);
+    const result = await FastPush.downloadAndApply(update, onProgress, deviceId);
 
     if (result === 'bundle_applied' && reloadOnSuccess) {
       await FastPush.reloadApp();
@@ -111,7 +119,7 @@ const FastPush = {
    */
   async reportStatus(releaseId, status, appVersion = '1.0.0') {
     assertNativeModule();
-    const deviceId = _config?.deviceId || getOrCreateDeviceId();
+    const deviceId = _config?.deviceId || (await getOrCreateDeviceId());
     return NativeFastPush.reportStatus(releaseId, deviceId, status, appVersion);
   },
 
@@ -154,10 +162,24 @@ function assertConfigured() {
   if (!_config) throw new Error('Call FastPush.configure() before using the SDK.');
 }
 
-function getOrCreateDeviceId() {
-  // In a real app, use a persistent UUID (e.g., react-native-device-info or AsyncStorage)
-  // This is a simple fallback
-  return 'device-' + Math.random().toString(36).slice(2);
+async function getOrCreateDeviceId() {
+  if (_cachedDeviceId) return _cachedDeviceId;
+  try {
+    _cachedDeviceId = await NativeFastPush.getDeviceId();
+  } catch {
+    _cachedDeviceId = 'device-' + Math.random().toString(36).slice(2);
+  }
+  return _cachedDeviceId;
+}
+
+async function getNativeAppVersion() {
+  if (_cachedNativeAppVersion) return _cachedNativeAppVersion;
+  try {
+    _cachedNativeAppVersion = await NativeFastPush.getNativeAppVersion();
+  } catch {
+    _cachedNativeAppVersion = Platform.Version?.toString() || '1.0.0';
+  }
+  return _cachedNativeAppVersion;
 }
 
 export default FastPush;

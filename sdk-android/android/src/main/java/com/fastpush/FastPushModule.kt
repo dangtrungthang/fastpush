@@ -5,7 +5,9 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.util.Log
 import androidx.core.content.FileProvider
+import com.facebook.react.ReactApplication
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import org.json.JSONObject
@@ -114,6 +116,24 @@ class FastPushModule(private val reactContext: ReactApplicationContext) :
     }
 
     @ReactMethod
+    fun getDeviceId(promise: Promise) {
+        val manager = getManager() ?: run {
+            promise.reject("NOT_CONFIGURED", "FastPush not configured.")
+            return
+        }
+        promise.resolve(manager.getDeviceId())
+    }
+
+    @ReactMethod
+    fun getNativeAppVersion(promise: Promise) {
+        val manager = getManager() ?: run {
+            promise.reject("NOT_CONFIGURED", "FastPush not configured.")
+            return
+        }
+        promise.resolve(manager.getNativeAppVersion())
+    }
+
+    @ReactMethod
     fun getCurrentBundlePath(promise: Promise) {
         val manager = getManager()
         promise.resolve(manager?.getCurrentBundlePath())
@@ -125,14 +145,18 @@ class FastPushModule(private val reactContext: ReactApplicationContext) :
         promise.resolve(null)
     }
 
-    // Reload the React Native bundle (triggers app restart with new bundle)
+    // Reload app with the downloaded bundle.
+    // Kills the process and relaunches — forces MainApplication to reinit with new bundle.
     @ReactMethod
     fun reloadApp() {
         reactContext.runOnUiQueueThread {
-            reactContext.currentActivity?.let {
-                val intent = it.packageManager.getLaunchIntentForPackage(it.packageName)
-                intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                it.startActivity(intent)
+            reactContext.currentActivity?.let { activity ->
+                val intent = activity.packageManager
+                    .getLaunchIntentForPackage(activity.packageName)
+                    ?: return@runOnUiQueueThread
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                activity.startActivity(intent)
+                android.os.Process.killProcess(android.os.Process.myPid())
             }
         }
     }

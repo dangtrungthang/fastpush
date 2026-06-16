@@ -50,6 +50,7 @@ async function release(options) {
     mandatory = false,
     type = 'bundle',
     file,
+    targetDevices,
   } = options;
 
   if (!appName) {
@@ -87,6 +88,7 @@ async function release(options) {
       type,
       description: description || '',
       isMandatory: mandatory,
+      targetDevices: targetDevices || '',
     });
 
     console.log(`\n✓ Release v${result.version} published!`);
@@ -94,6 +96,7 @@ async function release(options) {
     console.log(`  Target:  ${result.targetVersion}`);
     console.log(`  Size:    ${(result.fileSize / 1024).toFixed(1)} KB`);
     console.log(`  Hash:    ${result.hash.slice(0, 16)}...`);
+    console.log(`  Devices: ${result.targetMode === 'devices' ? result.targetDeviceIds.join(', ') : 'All devices'}`);
   } catch (err) {
     console.error(`✗ Release failed: ${err.message}`);
     process.exit(1);

@@ -1,6 +1,6 @@
 {
   "name": "react-native-fastpush",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "FastPush OTA update SDK for React Native Android",
   "main": "src/index.js",
   "files": [

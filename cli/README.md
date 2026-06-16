@@ -100,6 +100,7 @@ Các option của `release`:
 | `--mandatory` | Đánh dấu bắt buộc cập nhật | `false` |
 | `--type <type>` | `bundle` (OTA JS) hoặc `apk` (native) | `bundle` |
 | `--file <path>` | Upload file có sẵn, bỏ qua bước build | — |
+| `--target-devices <ids>` | Danh sách device ID (phân tách bởi dấu phẩy) chỉ phân phối cho các thiết bị này; bỏ qua = phân phối cho tất cả thiết bị | — |
 
 Khi build tự động, CLI tạo thư mục `.fastpush/` trong project để chứa bundle + assets trước khi zip và upload — có thể thêm `.fastpush/` vào `.gitignore`.
 

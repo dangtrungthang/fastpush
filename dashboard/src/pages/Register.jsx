@@ -13,8 +13,15 @@ export default function Register() {
     setLoading(true);
     setError('');
     try {
-      await api.post('/auth/register', form);
-      navigate('/login');
+      const { data } = await api.post('/auth/register', form);
+      if (data.token) {
+        localStorage.setItem('fastpush_token', data.token);
+        localStorage.setItem('fastpush_name', form.name);
+        localStorage.setItem('fastpush_email', form.email);
+        navigate('/');
+      } else {
+        navigate('/login');
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Registration failed');
     } finally {

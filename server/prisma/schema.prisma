@@ -8,31 +8,49 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  name      String
-  apps      App[]
-  createdAt DateTime @default(now())
+  id           String        @id @default(uuid())
+  email        String        @unique
+  password     String
+  name         String
+  apps         App[]
+  memberships  AppMember[]
+  activityLogs ActivityLog[]
+  createdAt    DateTime      @default(now())
 }
 
 model App {
-  id            String    @id @default(uuid())
-  name          String
-  platform      String
-  deploymentKey String    @unique @default(uuid())
-  userId        String
-  user          User      @relation(fields: [userId], references: [id])
-  releases      Release[]
-  createdAt     DateTime  @default(now())
+  id           String        @id @default(uuid())
+  name         String
+  platform     String
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
+  deployments  Deployment[]
+  members      AppMember[]
+  invites      AppInvite[]
+  activityLogs ActivityLog[]
+  devices      Device[]
+  deviceGroups DeviceGroup[]
+  createdAt    DateTime      @default(now())
 
   @@unique([name, userId])
 }
 
+model Deployment {
+  id            String    @id @default(uuid())
+  appId         String
+  app           App       @relation(fields: [appId], references: [id])
+  name          String    // "Production" | "Staging" | "Development"
+  deploymentKey String    @unique @default(uuid())
+  releases      Release[]
+  createdAt     DateTime  @default(now())
+
+  @@unique([appId, name])
+}
+
 model Release {
   id              String         @id @default(uuid())
-  appId           String
-  app             App            @relation(fields: [appId], references: [id])
+  deploymentId    String?
+  deployment      Deployment?    @relation(fields: [deploymentId], references: [id])
   version         Int
   targetVersion   String
   type            String
@@ -43,6 +61,10 @@ model Release {
   isMandatory     Boolean        @default(false)
   isDisabled      Boolean        @default(false)
   rolloutPercent  Int            @default(100)
+  targetMode      String         @default("all") // "all" | "devices" | "group"
+  targetDeviceIds String[]       @default([])
+  targetGroupId   String?
+  targetGroup     DeviceGroup?   @relation(fields: [targetGroupId], references: [id], onDelete: SetNull)
   downloadCount   Int            @default(0)
   installCount    Int            @default(0)
   failCount       Int            @default(0)
@@ -52,15 +74,80 @@ model Release {
   deviceInstalls  DeviceInstall[]
 }
 
+model Device {
+  id               String       @id @default(uuid())
+  appId            String
+  app              App          @relation(fields: [appId], references: [id])
+  serialNumber     String
+  platform         String       @default("android")
+  nativeAppVersion String?
+  otaVersion       Int?
+  otaHash          String?
+  deviceGroupId    String?
+  deviceGroup      DeviceGroup? @relation(fields: [deviceGroupId], references: [id], onDelete: SetNull)
+  lastSeenAt       DateTime     @updatedAt
+  createdAt        DateTime     @default(now())
+
+  @@unique([appId, serialNumber])
+}
+
+model DeviceGroup {
+  id        String   @id @default(uuid())
+  appId     String
+  app       App      @relation(fields: [appId], references: [id])
+  name      String
+  devices   Device[]
+  releases  Release[]
+  createdAt DateTime @default(now())
+
+  @@unique([appId, name])
+}
+
 model DeviceInstall {
   id         String   @id @default(uuid())
   releaseId  String
   release    Release  @relation(fields: [releaseId], references: [id])
   deviceId   String
   appVersion String
-  status     String   @default("pending")  // pending | downloading | installed | failed
+  status     String   @default("pending")
   updatedAt  DateTime @updatedAt
   createdAt  DateTime @default(now())
 
   @@unique([releaseId, deviceId])
+}
+
+model AppMember {
+  id        String   @id @default(uuid())
+  appId     String
+  app       App      @relation(fields: [appId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  role      String   // "owner" | "collaborator" | "viewer"
+  createdAt DateTime @default(now())
+
+  @@unique([appId, userId])
+}
+
+model AppInvite {
+  id        String   @id @default(uuid())
+  appId     String
+  app       App      @relation(fields: [appId], references: [id])
+  email     String
+  role      String   @default("collaborator")
+  token     String   @unique @default(uuid())
+  accepted  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@unique([appId, email])
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  appId     String
+  app       App      @relation(fields: [appId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  meta      Json?
+  createdAt DateTime @default(now())
 }

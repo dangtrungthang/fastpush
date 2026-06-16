@@ -33,17 +33,33 @@ router.post('/check', async (req, res) => {
       return res.status(400).json({ error: 'deploymentKey and appVersion are required' });
     }
 
-    const app = await prisma.app.findUnique({ where: { deploymentKey } });
-    if (!app) return res.status(404).json({ error: 'Invalid deployment key' });
+    const deployment = await prisma.deployment.findUnique({ where: { deploymentKey } });
+    if (!deployment) return res.status(404).json({ error: 'Invalid deployment key' });
 
     const releases = await prisma.release.findMany({
-      where: { appId: app.id, isDisabled: false, rolledBackAt: null },
+      where: { deploymentId: deployment.id, isDisabled: false, rolledBackAt: null },
       orderBy: { version: 'desc' },
     });
+
+    let deviceRecord = null;
+    if (deviceId) {
+      try {
+        const resolvedVersion = releases.find((r) => r.hash === currentHash)?.version ?? null;
+        deviceRecord = await prisma.device.upsert({
+          where: { appId_serialNumber: { appId: deployment.appId, serialNumber: deviceId } },
+          update: { nativeAppVersion: appVersion, otaHash: currentHash || null, otaVersion: resolvedVersion },
+          create: { appId: deployment.appId, serialNumber: deviceId, nativeAppVersion: appVersion, otaHash: currentHash || null, otaVersion: resolvedVersion },
+        });
+      } catch (err) {
+        console.error('Device upsert failed:', err.message);
+      }
+    }
 
     // Find latest matching release that this device qualifies for
     const latest = releases.find((r) => {
       if (!matchVersion(r.targetVersion, appVersion)) return false;
+      if (r.targetMode === 'devices' && (!deviceId || !r.targetDeviceIds.includes(deviceId))) return false;
+      if (r.targetMode === 'group' && (!deviceRecord || deviceRecord.deviceGroupId !== r.targetGroupId)) return false;
       if (deviceId && !inRollout(deviceId, r.id, r.rolloutPercent)) return false;
       return true;
     });

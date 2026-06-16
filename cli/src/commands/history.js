@@ -1,7 +1,13 @@
 const { request } = require('../utils/api');
 
+function targetLabel(r) {
+  if (r.targetMode === 'devices') return `${r.targetDeviceIds?.length || 0} devices`;
+  if (r.targetMode === 'group') return 'group';
+  return 'all';
+}
+
 async function history(options) {
-  const { app: appName } = options;
+  const { app: appName, deployment: deploymentName } = options;
 
   if (!appName) {
     console.error('✗ --app is required');
@@ -16,25 +22,42 @@ async function history(options) {
       process.exit(1);
     }
 
-    const releases = await request('GET', `/apps/${app.id}/releases`);
+    let releases = await request('GET', `/apps/${app.id}/releases`);
+
+    if (deploymentName) {
+      releases = releases.filter((r) => r.deployment?.name === deploymentName);
+    }
 
     if (releases.length === 0) {
-      console.log(`No releases for "${appName}".`);
+      console.log(deploymentName
+        ? `No releases in deployment "${deploymentName}" for "${appName}".`
+        : `No releases for "${appName}".`);
       return;
     }
 
-    console.log(`\nReleases for "${appName}" (${releases.length}):\n`);
-    console.log('  Ver  Type     Target     Size       Downloads  Mandatory  Status     Date');
-    console.log('  ---  -------  ---------  ---------  ---------  ---------  ---------  ----------');
-
+    // Group releases by deployment name
+    const byDeployment = {};
     for (const r of releases) {
-      const size = `${(r.fileSize / 1024).toFixed(1)}KB`;
-      const status = r.isDisabled ? 'disabled' : 'active';
-      const date = new Date(r.createdAt).toISOString().slice(0, 10);
-      const mandatory = r.isMandatory ? 'yes' : 'no';
-      console.log(
-        `  ${String(r.version).padEnd(4)} ${r.type.padEnd(8)} ${r.targetVersion.padEnd(10)} ${size.padEnd(10)} ${String(r.downloadCount).padEnd(10)} ${mandatory.padEnd(10)} ${status.padEnd(10)} ${date}`
-      );
+      const depName = r.deployment?.name || 'Unassigned';
+      (byDeployment[depName] = byDeployment[depName] || []).push(r);
+    }
+
+    console.log(`\nReleases for "${appName}" (${releases.length}):`);
+
+    for (const [depName, depReleases] of Object.entries(byDeployment)) {
+      console.log(`\n● ${depName} (${depReleases.length})`);
+      console.log('  Ver  Type     Target     Size       Rollout  Target     Downloads  Status     Date');
+      console.log('  ---  -------  ---------  ---------  -------  ---------  ---------  ---------  ----------');
+
+      for (const r of depReleases) {
+        const size = `${(r.fileSize / 1024).toFixed(1)}KB`;
+        const status = r.rolledBackAt ? 'rolledback' : r.isDisabled ? 'disabled' : 'active';
+        const date = new Date(r.createdAt).toISOString().slice(0, 10);
+        const rollout = `${r.rolloutPercent}%`;
+        console.log(
+          `  ${String(r.version).padEnd(4)} ${r.type.padEnd(8)} ${r.targetVersion.padEnd(10)} ${size.padEnd(10)} ${rollout.padEnd(8)} ${targetLabel(r).padEnd(10)} ${String(r.downloadCount).padEnd(10)} ${status.padEnd(10)} ${date}`
+        );
+      }
     }
     console.log('');
   } catch (err) {

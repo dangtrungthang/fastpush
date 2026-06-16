@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <files-path name="fastpush_bundles" path="fastpush/" />
+    <external-files-path name="fastpush_apk" path="fastpush/" />
 </paths>
